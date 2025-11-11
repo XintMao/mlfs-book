@@ -1,0 +1,36 @@
+name: Air Quality Daily Pipeline
+
+on:
+  schedule:
+    - cron: "0 6 * * *"   # 每天早上6点（UTC时间）自动执行
+  workflow_dispatch:      # 允许你手动触发
+jobs:
+  run-pipeline:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+
+      - name: Create env file
+        run: |
+          echo "HOPSWORKS_API_KEY=${{ secrets.HOPSWORKS_API_KEY }}" >> .env
+          echo "HOPSWORKS_PROJECT=${{ secrets.HOPSWORKS_PROJECT }}" >> .env
+          echo "HOPSWORKS_HOST=${{ secrets.HOPSWORKS_HOST }}" >> .env
+          echo "AQICN_API_KEY=${{ secrets.AQICN_API_KEY }}" >> .env
+          echo "AQICN_CITY=Copenhagen" >> .env
+          echo "AQICN_COUNTRY=Denmark" >> .env
+
+      - name: Run daily feature update + inference
+        run: |
+          jupyter nbconvert --to notebook --execute notebooks/airquality/2_air_quality_feature_pipeline.ipynb --ExecutePreprocessor.timeout=1200
+          jupyter nbconvert --to notebook --execute notebooks/airquality/4_air_quality_batch_inference.ipynb --ExecutePreprocessor.timeout=1200

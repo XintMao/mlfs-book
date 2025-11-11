@@ -1,9 +1,9 @@
 name: air-quality-daily
 
 on:
-  workflow_dispatch:
-    #schedule:
-    #- cron: '11 6 * * *'
+  workflow_dispatch:        # 可手动触发
+  schedule:
+    - cron: '11 6 * * *'    # 每天早上 6:11（UTC）自动运行一次
 
 jobs:
   schedule_pipelines:
@@ -22,32 +22,34 @@ jobs:
         with:
           python-version: '3.11'
           cache: 'pip'
+
       - name: install python packages
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: execute python workflows from bash script
+      - name: execute air quality inference pipeline
         env:
           HOPSWORKS_API_KEY: ${{ secrets.HOPSWORKS_API_KEY }}
+          HOPSWORKS_PROJECT: ${{ secrets.HOPSWORKS_PROJECT }}
+          HOPSWORKS_HOST: ${{ secrets.HOPSWORKS_HOST }}
+          AQICN_API_KEY: ${{ secrets.AQICN_API_KEY }}
+          AQICN_CITY: Copenhagen
+          AQICN_COUNTRY: Denmark
         run: |
-          make aq-inference
+          # 执行第 2 步和第 4 步 notebook，完成特征更新 + 预测
+          jupyter nbconvert --to notebook --execute notebooks/airquality/2_air_quality_feature_pipeline.ipynb --ExecutePreprocessor.timeout=1200
+          jupyter nbconvert --to notebook --execute notebooks/airquality/4_air_quality_batch_inference.ipynb --ExecutePreprocessor.timeout=1200
+
       - name: github pages publish
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: "Air Quality Dashboard published"
           commit_options: '--no-verify --signoff'
-
           file_pattern: 'docs/air-quality/assets/img/* docs/_includes/*'
-
           repository: .
-
           status_options: '--untracked-files=no'
-
           skip_dirty_check: true
-
           skip_fetch: true
-
           skip_checkout: true
-
           push_options: '--force'

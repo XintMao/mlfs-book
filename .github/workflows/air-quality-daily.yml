@@ -34,11 +34,11 @@ jobs:
       - name: execute air quality notebooks
         env:
           HOPSWORKS_API_KEY: ${{ secrets.HOPSWORKS_API_KEY }}
-          HOPSWORKS_PROJECT: ${{ secrets.HOPSWORKS_PROJECT }}
-          HOPSWORKS_HOST: ${{ secrets.HOPSWORKS_HOST }}
-          AQICN_API_KEY: ${{ secrets.AQICN_API_KEY }}
-          AQICN_COUNTRY: Denmark
-          AQICN_CITY: Copenhagen
+          AQICN_API_KEY: ${{ secrets.AQICN_API_KEY }}   
+          AQICN_URL: ${{ secrets.AQICN_URL }}
+          AQICN_STREET: ${{ secrets.AQICN_STREET }}
+          AQICN_COUNTRY: Denmark       
+          AQICN_CITY: Copenhagen       
         run: |
           jupyter nbconvert --to notebook --execute notebooks/airquality/2_air_quality_feature_pipeline.ipynb --ExecutePreprocessor.timeout=1800
           jupyter nbconvert --to notebook --execute notebooks/airquality/4_air_quality_batch_inference.ipynb --ExecutePreprocessor.timeout=1800

@@ -288,13 +288,38 @@ def check_file_path(file_path):
         print(f"File successfully found at the path: {file_path}")
 
 def backfill_predictions_for_monitoring(weather_fg, air_quality_df, monitor_fg, model):
-    features_df = weather_fg.read()
-    features_df = features_df.sort_values(by=['date'], ascending=True)
-    features_df = features_df.tail(10)
-    features_df['predicted_pm25'] = model.predict(features_df[['temperature_2m_mean', 'precipitation_sum', 'wind_speed_10m_max', 'wind_direction_10m_dominant']])
+    # Get weather data
+    weather_df = weather_fg.read()
+    weather_df = weather_df.sort_values(by=['date'], ascending=True)
+    weather_df = weather_df.tail(10)
+
+    # Get air quality data with lagged features
+    air_quality_df_sorted = air_quality_df.sort_values(by=['date'], ascending=True)
+
+    # Merge weather with air quality to get lagged features
+    # We need the lagged features from the air quality data
+    features_df = pd.merge(
+        weather_df,
+        air_quality_df_sorted[['date', 'pm25_lag_1d', 'pm25_lag_2d', 'pm25_lag_3d']],
+        on='date',
+        how='inner'
+    )
+
+    # Make predictions using all 7 features (3 lagged + 4 weather)
+    feature_columns = ['pm25_lag_1d', 'pm25_lag_2d', 'pm25_lag_3d',
+                       'temperature_2m_mean', 'precipitation_sum',
+                       'wind_speed_10m_max', 'wind_direction_10m_dominant']
+
+    features_df['predicted_pm25'] = model.predict(features_df[feature_columns])
+
+    # Merge with actual pm25 values
     df = pd.merge(features_df, air_quality_df[['date','pm25','street','country']], on="date")
     df['days_before_forecast_day'] = 1
     hindcast_df = df
+
+    # Drop columns not needed for monitoring feature group
     df = df.drop('pm25', axis=1)
+    df = df.drop(['pm25_lag_1d', 'pm25_lag_2d', 'pm25_lag_3d'], axis=1, errors='ignore')
+
     monitor_fg.insert(df, write_options={"wait_for_job": True})
     return hindcast_df
